@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 150" width="400" height="150">
+  <!-- Tiger silhouette outline -->
+  <g id="tiger-body" fill="#000000">
+    <!-- Body -->
+    <ellipse cx="200" cy="80" rx="120" ry="50"/>
+    
+    <!-- Head -->
+    <ellipse cx="90" cy="70" rx="45" ry="40"/>
+    
+    <!-- Ears -->
+    <ellipse cx="65" cy="45" rx="15" ry="20" transform="rotate(-20 65 45)"/>
+    <ellipse cx="115" cy="45" rx="15" ry="20" transform="rotate(20 115 45)"/>
+    
+    <!-- Front legs -->
+    <rect x="140" y="110" width="20" height="35" rx="10"/>
+    <rect x="180" y="110" width="20" height="35" rx="10"/>
+    
+    <!-- Back legs -->
+    <rect x="240" y="110" width="20" height="35" rx="10"/>
+    <rect x="280" y="110" width="20" height="35" rx="10"/>
+    
+    <!-- Tail (curved up) -->
+    <path d="M 310 80 Q 340 60, 360 40 Q 365 35, 370 40 Q 365 45, 360 50 Q 335 70, 310 85 Z"/>
+    
+    <!-- Nose/snout -->
+    <ellipse cx="50" cy="75" rx="12" ry="10"/>
+  </g>
+  
+  <!-- Text integrated into the tiger -->
+  <text x="200" y="85" font-family="Impact, Arial Black, sans-serif" font-size="38" font-weight="bold" fill="#FF6B00" text-anchor="middle" letter-spacing="2">
+    TALL TIGER
+  </text>
+  
+  <!-- Tiger stripes overlay on text -->
+  <g opacity="0.3">
+    <rect x="120" y="60" width="8" height="40" fill="#000" transform="rotate(-15 124 80)"/>
+    <rect x="150" y="60" width="8" height="40" fill="#000" transform="rotate(-10 154 80)"/>
+    <rect x="180" y="60" width="8" height="40" fill="#000" transform="rotate(-5 184 80)"/>
+    <rect x="210" y="60" width="8" height="40" fill="#000"/>
+    <rect x="240" y="60" width="8" height="40" fill="#000" transform="rotate(5 244 80)"/>
+    <rect x="270" y="60" width="8" height="40" fill="#000" transform="rotate(10 274 80)"/>
+  </g>
+</svg>
+

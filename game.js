@@ -5,7 +5,7 @@ const ctx = canvas.getContext('2d');
 // Set canvas size
 function resizeCanvas() {
     const container = canvas.parentElement;
-    const maxWidth = 600;
+    const maxWidth = 500;
     const width = Math.min(maxWidth, container.clientWidth - 40);
     canvas.width = width;
     canvas.height = 600;
@@ -17,10 +17,14 @@ window.addEventListener('resize', resizeCanvas);
 // Game Variables
 let gameState = 'start'; // start, playing, gameOver
 let score = 0;
+let towerHeight = 0;
 let highScore = localStorage.getItem('tallTigerHighScore') || 0;
-let platforms = [];
-let player;
-let keys = {};
+let tigers = [];
+let currentTiger = null;
+let platform = null;
+let swingDirection = 1;
+let swingSpeed = 2;
+let gravity = 0.5;
 let gameLoop;
 
 // UI Elements
@@ -29,176 +33,230 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 const currentScoreEl = document.getElementById('currentScore');
+const towerHeightEl = document.getElementById('towerHeight');
 const highScoreEl = document.getElementById('highScore');
 const finalScoreEl = document.getElementById('finalScore');
 const bestScoreEl = document.getElementById('bestScore');
+const heightMessageEl = document.getElementById('heightMessage');
+const controlsHint = document.getElementById('controlsHint');
 
 // Update high score display
-highScoreEl.textContent = highScore + 'm';
+highScoreEl.textContent = highScore;
 
-// Player Class
-class Player {
-    constructor() {
-        this.width = 40;
-        this.height = 40;
-        this.x = canvas.width / 2 - this.width / 2;
-        this.y = canvas.height - 150;
+// Tiger Class
+class Tiger {
+    constructor(x, y, isSwinging = false) {
+        this.width = 60;
+        this.height = 60;
+        this.x = x;
+        this.y = y;
         this.velocityY = 0;
         this.velocityX = 0;
-        this.gravity = 0.5;
-        this.jumpPower = -15;
-        this.speed = 5;
+        this.isSwinging = isSwinging;
+        this.isFalling = false;
+        this.rotation = 0;
+        this.rotationSpeed = 0;
     }
 
     draw() {
         ctx.save();
         
-        const centerX = this.x + this.width / 2;
-        const centerY = this.y + this.height / 2;
+        // Translate to tiger center for rotation
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.rotation);
         
-        // Draw tiger emoji (much better looking!)
+        // Draw tiger emoji
         ctx.font = `${this.width}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Add a subtle shadow for depth
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 5;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        // Add shadow for depth
+        if (!this.isFalling) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+        }
         
-        ctx.fillText('🐯', centerX, centerY);
+        ctx.fillText('🐯', 0, 0);
         
         ctx.restore();
     }
 
     update() {
-        // Horizontal movement
-        if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-            this.velocityX = -this.speed;
-        } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-            this.velocityX = this.speed;
-        } else {
-            this.velocityX = 0;
-        }
-
-        this.x += this.velocityX;
-
-        // Wrap around screen
-        if (this.x > canvas.width) {
-            this.x = -this.width;
-        } else if (this.x + this.width < 0) {
-            this.x = canvas.width;
-        }
-
-        // Apply gravity
-        this.velocityY += this.gravity;
-        this.y += this.velocityY;
-
-        // Check platform collisions
-        if (this.velocityY > 0) { // Only check when falling
-            platforms.forEach(platform => {
-                if (this.x + this.width > platform.x &&
-                    this.x < platform.x + platform.width &&
-                    this.y + this.height > platform.y &&
-                    this.y + this.height < platform.y + platform.height &&
-                    this.velocityY > 0) {
-                    
-                    this.velocityY = this.jumpPower;
-                    platform.hit = true;
-                }
-            });
-        }
-
-        // Move camera when player is in top half
-        if (this.y < canvas.height / 2 && this.velocityY < 0) {
-            this.y = canvas.height / 2;
+        if (this.isSwinging) {
+            // Swing back and forth
+            this.x += swingSpeed * swingDirection;
             
-            // Move platforms down
-            platforms.forEach(platform => {
-                platform.y -= this.velocityY;
-            });
-
-            // Update score
-            score += Math.abs(Math.floor(this.velocityY / 10));
-            currentScoreEl.textContent = score + 'm';
+            // Reverse direction at edges
+            if (this.x <= 0) {
+                this.x = 0;
+                swingDirection = 1;
+            }
+            if (this.x >= canvas.width - this.width) {
+                this.x = canvas.width - this.width;
+                swingDirection = -1;
+            }
+        } else if (!this.isFalling) {
+            // Apply gravity
+            this.velocityY += gravity;
+            this.y += this.velocityY;
+            
+            // Check collision with platform
+            if (platform && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
+                this.velocityY = 0;
+                this.isFalling = false;
+            }
+            
+            // Check collision with other tigers
+            for (let other of tigers) {
+                if (other !== this && !other.isFalling && this.checkCollision(other)) {
+                    this.y = other.y - this.height;
+                    this.velocityY = 0;
+                    this.isFalling = false;
+                    
+                    // Add slight wobble effect
+                    this.rotation = (Math.random() - 0.5) * 0.1;
+                    break;
+                }
+            }
+            
+            // Check if tiger fell off screen
+            if (this.y > canvas.height) {
+                this.isFalling = true;
+                endGame();
+            }
+            
+            // Check if tiger fell off platform horizontally
+            if (this.y + this.height > platform.y - 10) {
+                let tigerCenterX = this.x + this.width / 2;
+                if (tigerCenterX < platform.x || tigerCenterX > platform.x + platform.width) {
+                    this.isFalling = true;
+                    this.velocityX = (Math.random() - 0.5) * 5;
+                    this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+                    endGame();
+                }
+            }
+        } else {
+            // Falling animation
+            this.velocityY += gravity;
+            this.y += this.velocityY;
+            this.x += this.velocityX;
+            this.rotation += this.rotationSpeed;
         }
+    }
 
-        // Game over if player falls off bottom
-        if (this.y > canvas.height) {
-            endGame();
-        }
+    checkCollision(other) {
+        return this.x < other.x + other.width &&
+               this.x + this.width > other.x &&
+               this.y < other.y + other.height &&
+               this.y + this.height > other.y &&
+               this.velocityY > 0;
+    }
+
+    drop() {
+        this.isSwinging = false;
+        this.velocityY = 0;
     }
 }
 
 // Platform Class
 class Platform {
-    constructor(x, y, width) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = 12;
-        this.hit = false;
+    constructor() {
+        this.width = 150;
+        this.height = 20;
+        this.x = canvas.width / 2 - this.width / 2;
+        this.y = canvas.height - 50;
     }
 
     draw() {
-        ctx.fillStyle = this.hit ? '#4CAF50' : '#8B4513';
+        // Ground/grass effect
+        ctx.fillStyle = '#8B4513';
         ctx.fillRect(this.x, this.y, this.width, this.height);
         
-        // Add highlight
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.fillRect(this.x, this.y, this.width, 4);
+        // Grass on top
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(this.x, this.y, this.width, 5);
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(this.x, this.y + this.height, this.width, 3);
     }
 }
 
 // Initialize game
 function initGame() {
-    player = new Player();
-    platforms = [];
+    tigers = [];
     score = 0;
-    currentScoreEl.textContent = '0m';
-
-    // Create initial platforms
-    platforms.push(new Platform(canvas.width / 2 - 40, canvas.height - 100, 80));
+    towerHeight = 0;
+    swingDirection = 1;
+    currentScoreEl.textContent = '0';
+    towerHeightEl.textContent = '0m';
+    controlsHint.classList.remove('hidden');
     
-    for (let i = 0; i < 10; i++) {
-        createPlatform();
-    }
+    // Create platform
+    platform = new Platform();
+    
+    // Create first swinging tiger
+    currentTiger = new Tiger(canvas.width / 2 - 30, 50, true);
 }
 
-// Create new platform
-function createPlatform() {
-    const x = Math.random() * (canvas.width - 80);
-    const y = platforms.length > 0 ? 
-        platforms[platforms.length - 1].y - 60 - Math.random() * 40 : 
-        canvas.height - 100;
-    const width = 60 + Math.random() * 40;
+// Spawn next tiger
+function spawnNextTiger() {
+    if (gameState !== 'playing') return;
     
-    platforms.push(new Platform(x, y, width));
+    score++;
+    currentScoreEl.textContent = score;
+    
+    // Calculate tower height
+    if (tigers.length > 0) {
+        let topTiger = tigers.reduce((highest, tiger) => 
+            tiger.y < highest.y ? tiger : highest
+        );
+        towerHeight = Math.floor((canvas.height - 50 - topTiger.y) / 10);
+        towerHeightEl.textContent = towerHeight + 'm';
+    }
+    
+    // Spawn new tiger at top
+    setTimeout(() => {
+        if (gameState === 'playing') {
+            currentTiger = new Tiger(canvas.width / 2 - 30, 50, true);
+        }
+    }, 500);
+}
+
+// Drop current tiger
+function dropTiger() {
+    if (gameState !== 'playing' || !currentTiger || !currentTiger.isSwinging) return;
+    
+    currentTiger.drop();
+    tigers.push(currentTiger);
+    
+    spawnNextTiger();
 }
 
 // Game update function
 function update() {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' && gameState !== 'gameOver') return;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Update and draw platforms
-    platforms = platforms.filter(platform => platform.y < canvas.height + 100);
-    
-    platforms.forEach(platform => {
-        platform.draw();
-    });
+    // Draw platform
+    platform.draw();
 
-    // Add new platforms as needed
-    while (platforms.length < 15) {
-        createPlatform();
+    // Update and draw tigers
+    for (let tiger of tigers) {
+        tiger.update();
+        tiger.draw();
     }
 
-    // Update and draw player
-    player.update();
-    player.draw();
+    // Update and draw current swinging tiger
+    if (currentTiger) {
+        currentTiger.update();
+        currentTiger.draw();
+    }
 
     requestAnimationFrame(update);
 }
@@ -214,78 +272,73 @@ function startGame() {
 
 // End game
 function endGame() {
+    if (gameState === 'gameOver') return;
+    
     gameState = 'gameOver';
+    controlsHint.classList.add('hidden');
+    
+    // Calculate final score (subtract 1 because we count the falling tiger)
+    let finalScore = Math.max(0, score - 1);
     
     // Update high score
-    if (score > highScore) {
-        highScore = score;
+    if (finalScore > highScore) {
+        highScore = finalScore;
         localStorage.setItem('tallTigerHighScore', highScore);
-        highScoreEl.textContent = highScore + 'm';
+        highScoreEl.textContent = highScore;
     }
     
-    finalScoreEl.textContent = score;
-    bestScoreEl.textContent = highScore + 'm';
-    gameOverScreen.classList.remove('hidden');
+    // Show messages based on performance
+    let message = '';
+    if (finalScore === 0) {
+        message = 'Try again! You can do better! 💪';
+    } else if (finalScore < 5) {
+        message = 'Good start! Keep practicing! 🎯';
+    } else if (finalScore < 10) {
+        message = 'Nice tower! You\'re getting good! 🌟';
+    } else if (finalScore < 20) {
+        message = 'Impressive! That\'s a tall tower! 🏗️';
+    } else if (finalScore < 30) {
+        message = 'Amazing! You\'re a stacking master! 🏆';
+    } else {
+        message = 'LEGENDARY! Unbelievable tower! 👑';
+    }
+    
+    finalScoreEl.textContent = finalScore;
+    bestScoreEl.textContent = highScore;
+    heightMessageEl.textContent = message;
+    
+    setTimeout(() => {
+        gameOverScreen.classList.remove('hidden');
+    }, 1000);
 }
 
 // Event Listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-// Keyboard controls
-document.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
-    
-    // Start game with space or enter if on start screen
-    if ((e.key === ' ' || e.key === 'Enter') && gameState === 'start') {
-        e.preventDefault();
-        startGame();
-    }
-    
-    // Restart game with space or enter if game over
-    if ((e.key === ' ' || e.key === 'Enter') && gameState === 'gameOver') {
-        e.preventDefault();
-        startGame();
-    }
-});
-
-document.addEventListener('keyup', (e) => {
-    keys[e.key] = false;
-});
-
-// Touch controls for mobile
-let touchStartX = 0;
-let touchCurrentX = 0;
-
+// Click/tap to drop tiger
+canvas.addEventListener('click', dropTiger);
 canvas.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    touchCurrentX = touchStartX;
+    e.preventDefault();
+    dropTiger();
 });
 
-canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    touchCurrentX = e.touches[0].clientX;
-    
-    const diff = touchCurrentX - touchStartX;
-    
-    if (diff > 5) {
-        keys['ArrowRight'] = true;
-        keys['ArrowLeft'] = false;
-    } else if (diff < -5) {
-        keys['ArrowLeft'] = true;
-        keys['ArrowRight'] = false;
+// Spacebar to drop
+document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        if (gameState === 'start') {
+            startGame();
+        } else if (gameState === 'playing') {
+            dropTiger();
+        } else if (gameState === 'gameOver') {
+            startGame();
+        }
     }
 });
 
-canvas.addEventListener('touchend', () => {
-    keys['ArrowLeft'] = false;
-    keys['ArrowRight'] = false;
-});
-
-// Prevent default touch behavior on canvas
+// Prevent default touch behavior
 canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
 // Initialize
 initGame();
-
