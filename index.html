@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tall Tiger - Jump to the Sky!</title>
+    <meta name="description" content="Help the tiger jump as high as possible! A fun and addictive jumping game.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🐯 TALL TIGER 🐯</h1>
+            <p class="tagline">Jump to the Sky!</p>
+        </header>
+
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div class="game-overlay" id="startScreen">
+                <h2>Welcome to Tall Tiger!</h2>
+                <p>Use <strong>ARROW KEYS</strong> or <strong>A/D</strong> to move left and right</p>
+                <p>Jump on platforms to reach the sky!</p>
+                <button class="btn-primary" id="startBtn">Start Game</button>
+            </div>
+
+            <div class="game-overlay hidden" id="gameOverScreen">
+                <h2>Game Over!</h2>
+                <p>Your Height: <span id="finalScore">0</span>m</p>
+                <p>Best Height: <span id="bestScore">0</span>m</p>
+                <button class="btn-primary" id="restartBtn">Play Again</button>
+            </div>
+
+            <div class="score-panel">
+                <div class="score-item">
+                    <span class="score-label">Height:</span>
+                    <span class="score-value" id="currentScore">0m</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Best:</span>
+                    <span class="score-value" id="highScore">0m</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Play</h3>
+            <ul>
+                <li>🎮 Use Arrow Keys (← →) or A/D keys to move the tiger</li>
+                <li>📈 Jump on platforms to climb higher</li>
+                <li>⚠️ Don't fall off the bottom!</li>
+                <li>🏆 Try to beat your high score!</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>Made with 🧡 for talltiger.net</p>
+        </footer>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
+
