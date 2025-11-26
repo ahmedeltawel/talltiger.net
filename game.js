@@ -51,29 +51,23 @@ class Player {
     }
 
     draw() {
-        // Draw tiger emoji or simple tiger representation
         ctx.save();
         
-        // Tiger body (orange)
-        ctx.fillStyle = '#FF8C00';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2;
         
-        // Tiger stripes (black)
-        ctx.fillStyle = '#000';
-        ctx.fillRect(this.x + 5, this.y + 5, 3, 30);
-        ctx.fillRect(this.x + 15, this.y + 5, 3, 30);
-        ctx.fillRect(this.x + 25, this.y + 5, 3, 30);
-        ctx.fillRect(this.x + 35, this.y + 5, 3, 30);
+        // Draw tiger emoji (much better looking!)
+        ctx.font = `${this.width}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         
-        // Tiger face (simplified)
-        ctx.fillStyle = '#FFF';
-        ctx.fillRect(this.x + 8, this.y + 5, 8, 8);
-        ctx.fillRect(this.x + 24, this.y + 5, 8, 8);
+        // Add a subtle shadow for depth
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
         
-        // Eyes
-        ctx.fillStyle = '#000';
-        ctx.fillRect(this.x + 10, this.y + 8, 3, 3);
-        ctx.fillRect(this.x + 27, this.y + 8, 3, 3);
+        ctx.fillText('🐯', centerX, centerY);
         
         ctx.restore();
     }
