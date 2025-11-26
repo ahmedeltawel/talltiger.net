@@ -1,34 +1,23 @@
-// Game Canvas Setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // Set canvas size
-function resizeCanvas() {
-    const container = canvas.parentElement;
-    const maxWidth = 600;
-    const width = Math.min(maxWidth, container.clientWidth - 40);
-    canvas.width = width;
-    canvas.height = 600;
-}
+canvas.width = 600;
+canvas.height = 600;
 
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-// Game Variables
-let gameState = 'start';
+// Game state
+let gameState = 'start'; // 'start', 'playing', 'gameOver'
 let score = 0;
-let highScore = localStorage.getItem('tallTigerMotorwaysScore') || 0;
-let roads = [];
-let maxRoads = 10;
-let houses = [];
-let destinations = [];
-let cars = [];
-let isDrawing = false;
-let drawStart = null;
-let drawEnd = null;
-let gridSize = 30;
-let carSpawnTimer = 0;
-let carSpawnInterval = 180; // frames between car spawns
+let lives = 3;
+let timeLeft = 30;
+let highScore = localStorage.getItem('tigerTapperHighScore') || 0;
+let tigers = [];
+let particles = [];
+let lastSpawnTime = 0;
+let spawnInterval = 1000; // milliseconds
+let comboCounter = 0;
+let lastTapTime = 0;
+let gameStartTime = 0;
 
 // UI Elements
 const startScreen = document.getElementById('startScreen');
@@ -36,485 +25,440 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 const currentScoreEl = document.getElementById('currentScore');
-const roadCountEl = document.getElementById('roadCount');
+const timeLeftEl = document.getElementById('timeLeft');
+const livesLeftEl = document.getElementById('livesLeft');
 const highScoreEl = document.getElementById('highScore');
 const finalScoreEl = document.getElementById('finalScore');
 const bestScoreEl = document.getElementById('bestScore');
-const gameOverMessageEl = document.getElementById('gameOverMessage');
+const gameOverMessage = document.getElementById('gameOverMessage');
 const controlsHint = document.getElementById('controlsHint');
 
-highScoreEl.textContent = highScore;
+// Grid configuration for tiger holes
+const GRID_COLS = 3;
+const GRID_ROWS = 3;
+const HOLE_SIZE = 120;
+const HOLE_MARGIN = 40;
+const GRID_START_X = (canvas.width - (GRID_COLS * HOLE_SIZE + (GRID_COLS - 1) * HOLE_MARGIN)) / 2;
+const GRID_START_Y = 80;
 
-// Helper Functions
-function snapToGrid(x, y) {
-    return {
-        x: Math.round(x / gridSize) * gridSize,
-        y: Math.round(y / gridSize) * gridSize
-    };
-}
+// Tiger class
+class Tiger {
+    constructor(row, col, isGolden = false) {
+        this.row = row;
+        this.col = col;
+        this.x = GRID_START_X + col * (HOLE_SIZE + HOLE_MARGIN) + HOLE_SIZE / 2;
+        this.y = GRID_START_Y + row * (HOLE_SIZE + HOLE_MARGIN) + HOLE_SIZE / 2;
+        this.isGolden = isGolden;
+        this.state = 'appearing'; // 'appearing', 'visible', 'disappearing'
+        this.lifetime = isGolden ? 800 : 1200; // Golden tigers are faster
+        this.createdAt = Date.now();
+        this.scale = 0;
+        this.targetScale = 1;
+        this.clicked = false;
+        this.radius = 40;
+    }
 
-function distance(p1, p2) {
-    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-}
+    update(deltaTime) {
+        const elapsed = Date.now() - this.createdAt;
 
-// Building Classes
-class Building {
-    constructor(x, y, type, color) {
-        this.x = x;
-        this.y = y;
-        this.type = type; // 'house' or 'destination'
-        this.color = color;
-        this.size = 20;
-        this.queue = 0;
-        this.maxQueue = 5;
+        if (this.state === 'appearing') {
+            this.scale = Math.min(1, elapsed / 150);
+            if (this.scale >= 1) {
+                this.state = 'visible';
+            }
+        } else if (this.state === 'visible') {
+            // Slowly bob up and down
+            this.scale = 1 + Math.sin(elapsed / 100) * 0.05;
+            
+            if (elapsed > this.lifetime) {
+                this.state = 'disappearing';
+            }
+        } else if (this.state === 'disappearing') {
+            this.scale = Math.max(0, 1 - (elapsed - this.lifetime) / 150);
+        }
+
+        return this.state === 'disappearing' && this.scale <= 0;
     }
 
     draw() {
         ctx.save();
-        
-        // Shadow
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        ctx.shadowBlur = 10;
-        
-        if (this.type === 'house') {
-            // Draw house
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-            
-            // Roof
-            ctx.fillStyle = '#8B4513';
-            ctx.beginPath();
-            ctx.moveTo(this.x - this.size/2 - 3, this.y - this.size/2);
-            ctx.lineTo(this.x, this.y - this.size/2 - 8);
-            ctx.lineTo(this.x + this.size/2 + 3, this.y - this.size/2);
-            ctx.closePath();
-            ctx.fill();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.scale, this.scale);
+
+        // Draw tiger face
+        if (this.isGolden) {
+            // Golden tiger - shiny gold color
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius);
+            gradient.addColorStop(0, '#FFD700');
+            gradient.addColorStop(0.5, '#FFA500');
+            gradient.addColorStop(1, '#FF8C00');
+            ctx.fillStyle = gradient;
         } else {
-            // Draw destination (circle)
-            ctx.fillStyle = this.color;
+            // Regular tiger - orange
+            ctx.fillStyle = '#FF6B00';
+        }
+
+        // Head
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stripes
+        ctx.strokeStyle = this.isGolden ? '#B8860B' : '#8B4513';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-20, -10);
+        ctx.lineTo(-30, -10);
+        ctx.moveTo(-20, 5);
+        ctx.lineTo(-30, 5);
+        ctx.moveTo(20, -10);
+        ctx.lineTo(30, -10);
+        ctx.moveTo(20, 5);
+        ctx.lineTo(30, 5);
+        ctx.stroke();
+
+        // Eyes
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(-12, -5, 4, 0, Math.PI * 2);
+        ctx.arc(12, -5, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nose
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(0, 8, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mouth
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 8, 8, 0, Math.PI);
+        ctx.stroke();
+
+        // Ears
+        ctx.fillStyle = this.isGolden ? '#FFA500' : '#FF6B00';
+        ctx.beginPath();
+        ctx.arc(-25, -25, 12, 0, Math.PI * 2);
+        ctx.arc(25, -25, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Golden shimmer effect
+        if (this.isGolden) {
+            const shimmer = (Date.now() % 1000) / 1000;
+            ctx.fillStyle = `rgba(255, 255, 255, ${shimmer * 0.3})`;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size/2, 0, Math.PI * 2);
+            ctx.arc(-10, -10, 8, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Flag
-            ctx.strokeStyle = '#FFF';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y - this.size/2);
-            ctx.lineTo(this.x, this.y - this.size/2 - 10);
-            ctx.stroke();
         }
-        
-        // Queue indicator
-        if (this.queue > 0 && this.type === 'house') {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = 'bold 12px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(this.queue, this.x, this.y + this.size + 8);
-        }
-        
+
         ctx.restore();
     }
-}
 
-// Road Class
-class Road {
-    constructor(start, end) {
-        this.start = start;
-        this.end = end;
-        this.width = 8;
-    }
-
-    draw() {
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = this.width;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(this.start.x, this.start.y);
-        ctx.lineTo(this.end.x, this.end.y);
-        ctx.stroke();
-        
-        // Road markings
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 10]);
-        ctx.beginPath();
-        ctx.moveTo(this.start.x, this.start.y);
-        ctx.lineTo(this.end.x, this.end.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    }
-
-    isPointOnRoad(x, y, tolerance = 15) {
-        const d = this.distanceToPoint(x, y);
-        return d < tolerance;
-    }
-
-    distanceToPoint(x, y) {
-        const A = x - this.start.x;
-        const B = y - this.start.y;
-        const C = this.end.x - this.start.x;
-        const D = this.end.y - this.start.y;
-
-        const dot = A * C + B * D;
-        const len_sq = C * C + D * D;
-        let param = -1;
-        
-        if (len_sq != 0) param = dot / len_sq;
-
-        let xx, yy;
-
-        if (param < 0) {
-            xx = this.start.x;
-            yy = this.start.y;
-        } else if (param > 1) {
-            xx = this.end.x;
-            yy = this.end.y;
-        } else {
-            xx = this.start.x + param * C;
-            yy = this.start.y + param * D;
-        }
-
-        const dx = x - xx;
-        const dy = y - yy;
-        return Math.sqrt(dx * dx + dy * dy);
+    isPointInside(x, y) {
+        const dx = x - this.x;
+        const dy = y - this.y;
+        return Math.sqrt(dx * dx + dy * dy) < this.radius * this.scale;
     }
 }
 
-// Car Class
-class Car {
-    constructor(start, color) {
-        this.x = start.x;
-        this.y = start.y;
+// Particle class for visual effects
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 5;
+        this.vy = (Math.random() - 0.5) * 5 - 2;
+        this.life = 1;
         this.color = color;
-        this.size = 6;
-        this.speed = 2;
-        this.target = null;
-        this.path = [];
-        this.stuck = false;
-        this.stuckTimer = 0;
-        this.maxStuckTime = 300; // 5 seconds at 60fps
-        
-        // Find destination
-        this.findDestination();
+        this.size = Math.random() * 6 + 3;
     }
 
-    findDestination() {
-        const matching = destinations.filter(d => d.color === this.color);
-        if (matching.length > 0) {
-            this.target = matching[0];
-        }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.2; // gravity
+        this.life -= 0.02;
+        return this.life <= 0;
     }
 
     draw() {
         ctx.save();
+        ctx.globalAlpha = this.life;
         ctx.fillStyle = this.color;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 3;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
+}
 
-    update() {
-        if (!this.target) return;
+// Draw game background
+function drawBackground() {
+    // Ground
+    ctx.fillStyle = '#1a472a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Simple pathfinding: move towards target on roads
-        const dx = this.target.x - this.x;
-        const dy = this.target.y - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+    // Draw bushes/holes
+    for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+            const x = GRID_START_X + col * (HOLE_SIZE + HOLE_MARGIN);
+            const y = GRID_START_Y + row * (HOLE_SIZE + HOLE_MARGIN);
 
-        if (dist < 15) {
-            // Reached destination
-            return 'arrived';
-        }
+            // Bush background
+            ctx.fillStyle = '#0d2818';
+            ctx.beginPath();
+            ctx.ellipse(x + HOLE_SIZE / 2, y + HOLE_SIZE / 2, HOLE_SIZE / 2, HOLE_SIZE / 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        // Check if on a road
-        let onRoad = false;
-        for (let road of roads) {
-            if (road.isPointOnRoad(this.x, this.y, 12)) {
-                onRoad = true;
-                break;
+            // Darker center (hole)
+            ctx.fillStyle = '#051510';
+            ctx.beginPath();
+            ctx.ellipse(x + HOLE_SIZE / 2, y + HOLE_SIZE / 2, HOLE_SIZE / 2.5, HOLE_SIZE / 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Grass details
+            ctx.strokeStyle = '#2d5016';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                const grassX = x + HOLE_SIZE / 2 + (Math.random() - 0.5) * HOLE_SIZE * 0.7;
+                const grassY = y + HOLE_SIZE / 2 + (Math.random() - 0.5) * HOLE_SIZE * 0.5;
+                ctx.moveTo(grassX, grassY);
+                ctx.lineTo(grassX + (Math.random() - 0.5) * 10, grassY - 10 - Math.random() * 10);
+                ctx.stroke();
             }
         }
-
-        if (onRoad || dist < 50) {
-            // Move towards target
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
-            this.stuckTimer = 0;
-        } else {
-            // Try to find nearest road
-            let nearestRoad = null;
-            let nearestDist = Infinity;
-            
-            for (let road of roads) {
-                const d = road.distanceToPoint(this.x, this.y);
-                if (d < nearestDist) {
-                    nearestDist = d;
-                    nearestRoad = road;
-                }
-            }
-
-            if (nearestRoad && nearestDist < 100) {
-                // Move towards nearest road
-                const roadMidX = (nearestRoad.start.x + nearestRoad.end.x) / 2;
-                const roadMidY = (nearestRoad.start.y + nearestRoad.end.y) / 2;
-                const rdx = roadMidX - this.x;
-                const rdy = roadMidY - this.y;
-                const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
-                
-                this.x += (rdx / rdist) * this.speed;
-                this.y += (rdy / rdist) * this.speed;
-            } else {
-                // Stuck
-                this.stuckTimer++;
-            }
-        }
-
-        if (this.stuckTimer > this.maxStuckTime) {
-            return 'stuck';
-        }
-
-        return 'driving';
     }
 }
 
-// Initialize Game
-function initGame() {
-    roads = [];
-    cars = [];
-    houses = [];
-    destinations = [];
-    score = 0;
-    maxRoads = 10;
-    carSpawnTimer = 0;
+// Spawn a new tiger
+function spawnTiger() {
+    // Find available positions
+    const occupied = new Set(tigers.map(t => `${t.row},${t.col}`));
+    const available = [];
     
-    currentScoreEl.textContent = '0';
-    roadCountEl.textContent = maxRoads;
-    controlsHint.classList.remove('hidden');
+    for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+            if (!occupied.has(`${row},${col}`)) {
+                available.push({ row, col });
+            }
+        }
+    }
 
-    // Create buildings (Moosach to Andreas-Vöst-Straße theme)
-    const padding = 60;
-    
-    // Houses (green - start points)
-    houses.push(new Building(padding + 30, padding + 30, 'house', '#4CAF50'));
-    houses.push(new Building(padding + 30, canvas.height - padding - 30, 'house', '#8BC34A'));
-    
-    // Destinations (blue - end points)
-    destinations.push(new Building(canvas.width - padding - 30, padding + 30, 'destination', '#2196F3'));
-    destinations.push(new Building(canvas.width - padding - 30, canvas.height - padding - 30, 'destination', '#03A9F4'));
+    if (available.length > 0) {
+        const pos = available[Math.floor(Math.random() * available.length)];
+        const isGolden = Math.random() < 0.15; // 15% chance for golden tiger
+        tigers.push(new Tiger(pos.row, pos.col, isGolden));
+    }
 }
 
-// Mouse/Touch handling
-function getMousePos(e) {
+// Handle click/tap
+canvas.addEventListener('click', (e) => {
+    if (gameState !== 'playing') return;
+
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
-    let clientX, clientY;
-    if (e.touches) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-    } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-    }
-    
-    return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
-    };
-}
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
-canvas.addEventListener('mousedown', startDrawing);
-canvas.addEventListener('mousemove', drawing);
-canvas.addEventListener('mouseup', endDrawing);
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, { passive: false });
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawing(e); }, { passive: false });
-canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDrawing(e); }, { passive: false });
+    let hit = false;
+    for (let i = tigers.length - 1; i >= 0; i--) {
+        const tiger = tigers[i];
+        if (!tiger.clicked && tiger.state === 'visible' && tiger.isPointInside(x, y)) {
+            tiger.clicked = true;
+            hit = true;
 
-function startDrawing(e) {
-    if (gameState !== 'playing') return;
-    if (roads.length >= maxRoads) return;
-    
-    const pos = getMousePos(e);
-    drawStart = snapToGrid(pos.x, pos.y);
-    isDrawing = true;
-}
-
-function drawing(e) {
-    if (!isDrawing || gameState !== 'playing') return;
-    
-    const pos = getMousePos(e);
-    drawEnd = snapToGrid(pos.x, pos.y);
-}
-
-function endDrawing(e) {
-    if (!isDrawing || gameState !== 'playing') return;
-    
-    if (drawStart && drawEnd && distance(drawStart, drawEnd) > gridSize) {
-        roads.push(new Road(drawStart, drawEnd));
-        roadCountEl.textContent = maxRoads - roads.length;
-        
-        if (roads.length >= maxRoads) {
-            controlsHint.classList.add('hidden');
-        }
-    }
-    
-    isDrawing = false;
-    drawStart = null;
-    drawEnd = null;
-}
-
-// Spawn Cars
-function spawnCars() {
-    carSpawnTimer++;
-    
-    if (carSpawnTimer >= carSpawnInterval) {
-        carSpawnTimer = 0;
-        
-        // Spawn from random house
-        if (houses.length > 0) {
-            const house = houses[Math.floor(Math.random() * houses.length)];
-            
-            if (house.queue < house.maxQueue) {
-                house.queue++;
-                
-                // Match house color to destination
-                let carColor = house.color;
-                cars.push(new Car(house, carColor));
+            // Calculate combo
+            const now = Date.now();
+            if (now - lastTapTime < 500) {
+                comboCounter++;
             } else {
-                // House overloaded
-                endGame('A house got too backed up!');
+                comboCounter = 1;
             }
-        }
-    }
-}
+            lastTapTime = now;
 
-// Game Update Loop
-function update() {
-    if (gameState !== 'playing' && gameState !== 'gameOver') return;
+            // Calculate score
+            let points = tiger.isGolden ? 50 : 10;
+            if (comboCounter > 1) {
+                points += (comboCounter - 1) * 5;
+            }
+            score += points;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Create particles
+            const color = tiger.isGolden ? '#FFD700' : '#FF6B00';
+            for (let j = 0; j < 15; j++) {
+                particles.push(new Particle(tiger.x, tiger.y, color));
+            }
 
-    // Draw grid (subtle)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
+            // Show score popup
+            showScorePopup(tiger.x, tiger.y, points, comboCounter);
 
-    // Draw roads
-    roads.forEach(road => road.draw());
-
-    // Draw current drawing
-    if (isDrawing && drawStart && drawEnd) {
-        ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
-        ctx.lineWidth = 8;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.moveTo(drawStart.x, drawStart.y);
-        ctx.lineTo(drawEnd.x, drawEnd.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    }
-
-    // Draw buildings
-    houses.forEach(h => h.draw());
-    destinations.forEach(d => d.draw());
-
-    // Update and draw cars
-    if (gameState === 'playing') {
-        spawnCars();
-        
-        for (let i = cars.length - 1; i >= 0; i--) {
-            const status = cars[i].update();
+            // Remove tiger
+            tigers.splice(i, 1);
             
-            if (status === 'arrived') {
-                score++;
-                currentScoreEl.textContent = score;
-                cars.splice(i, 1);
-                
-                // Decrease queue
-                houses.forEach(h => {
-                    if (h.queue > 0) h.queue--;
-                });
-                
-                // Every 5 deliveries, speed up spawning
-                if (score % 5 === 0) {
-                    carSpawnInterval = Math.max(60, carSpawnInterval - 10);
-                }
-            } else if (status === 'stuck') {
-                endGame('A car got stuck without a road!');
-                cars.splice(i, 1);
-            }
+            break;
         }
     }
 
-    cars.forEach(car => car.draw());
+    updateUI();
+});
 
-    requestAnimationFrame(update);
+// Show score popup
+function showScorePopup(x, y, points, combo) {
+    const popup = {
+        x, y,
+        points,
+        combo,
+        life: 1,
+        offsetY: 0
+    };
+
+    const animate = () => {
+        if (popup.life <= 0) return;
+
+        ctx.save();
+        ctx.globalAlpha = popup.life;
+        ctx.fillStyle = combo > 1 ? '#FFD700' : '#FFF';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        const text = combo > 1 ? `+${points} x${combo}!` : `+${points}`;
+        ctx.strokeText(text, popup.x, popup.y - popup.offsetY);
+        ctx.fillText(text, popup.x, popup.y - popup.offsetY);
+        ctx.restore();
+
+        popup.offsetY += 2;
+        popup.life -= 0.02;
+
+        if (popup.life > 0) {
+            requestAnimationFrame(animate);
+        }
+    };
+
+    animate();
 }
 
-// Start Game
+// Update UI elements
+function updateUI() {
+    currentScoreEl.textContent = score;
+    timeLeftEl.textContent = timeLeft;
+    livesLeftEl.textContent = lives;
+    highScoreEl.textContent = highScore;
+}
+
+// Game loop
+function gameLoop() {
+    const now = Date.now();
+
+    if (gameState === 'playing') {
+        // Update timer
+        const elapsed = (now - gameStartTime) / 1000;
+        timeLeft = Math.max(0, 30 - Math.floor(elapsed));
+
+        // Check game over conditions
+        if (timeLeft <= 0 || lives <= 0) {
+            endGame();
+            return;
+        }
+
+        // Spawn tigers
+        if (now - lastSpawnTime > spawnInterval) {
+            spawnTiger();
+            lastSpawnTime = now;
+            // Increase difficulty over time
+            spawnInterval = Math.max(400, 1000 - elapsed * 20);
+        }
+
+        // Update tigers
+        for (let i = tigers.length - 1; i >= 0; i--) {
+            const tiger = tigers[i];
+            const shouldRemove = tiger.update();
+
+            if (shouldRemove) {
+                if (!tiger.clicked && tiger.state === 'disappearing') {
+                    // Tiger escaped - lose a life
+                    lives--;
+                    lives = Math.max(0, lives);
+                    comboCounter = 0;
+                }
+                tigers.splice(i, 1);
+            }
+        }
+
+        // Update particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            if (particles[i].update()) {
+                particles.splice(i, 1);
+            }
+        }
+
+        updateUI();
+    }
+
+    // Draw everything
+    drawBackground();
+
+    // Draw tigers
+    tigers.forEach(tiger => tiger.draw());
+
+    // Draw particles
+    particles.forEach(particle => particle.draw());
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start game
 function startGame() {
     gameState = 'playing';
+    score = 0;
+    lives = 3;
+    timeLeft = 30;
+    tigers = [];
+    particles = [];
+    comboCounter = 0;
+    lastTapTime = 0;
+    lastSpawnTime = Date.now();
+    gameStartTime = Date.now();
+    spawnInterval = 1000;
+
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
-    initGame();
-    update();
+    controlsHint.classList.remove('hidden');
+
+    updateUI();
+    setTimeout(() => {
+        controlsHint.classList.add('hidden');
+    }, 3000);
 }
 
-// End Game
-function endGame(message) {
-    if (gameState === 'gameOver') return;
-    
+// End game
+function endGame() {
     gameState = 'gameOver';
-    controlsHint.classList.add('hidden');
     
+    // Update high score
     if (score > highScore) {
         highScore = score;
-        localStorage.setItem('tallTigerMotorwaysScore', highScore);
-        highScoreEl.textContent = highScore;
-        gameOverMessageEl.textContent = '🎉 New High Score! ' + message;
+        localStorage.setItem('tigerTapperHighScore', highScore);
+        gameOverMessage.textContent = '🎉 New High Score! 🎉';
+    } else if (score > highScore * 0.8) {
+        gameOverMessage.textContent = 'So Close! Great Job! 🐯';
     } else {
-        gameOverMessageEl.textContent = message;
+        gameOverMessage.textContent = 'Nice Try! Keep Tapping! 💪';
     }
-    
+
     finalScoreEl.textContent = score;
     bestScoreEl.textContent = highScore;
-    
-    setTimeout(() => {
-        gameOverScreen.classList.remove('hidden');
-    }, 1000);
+    gameOverScreen.classList.remove('hidden');
 }
 
-// Event Listeners
+// Event listeners
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        if (gameState === 'start') {
-            startGame();
-        } else if (gameState === 'gameOver') {
-            startGame();
-        }
-    }
-});
-
 // Initialize
-initGame();
+highScoreEl.textContent = highScore;
+gameLoop();

@@ -3,45 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tall Tiger - Mini Motorways</title>
-    <meta name="description" content="Build roads and manage traffic flow in this addictive puzzle game!">
-    <link rel="stylesheet" href="style.css?v=10">
+    <title>Tall Tiger - Tiger Tapper!</title>
+    <meta name="description" content="Tap the tigers before they disappear! Fast-paced reflex game!">
+    <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
     <div class="container">
         <header>
-            <img src="logo.svg?v=1764201372" alt="Tall Tiger" class="logo" onerror="this.style.display='none'; document.getElementById('textLogo').style.display='block';">
+            <img src="logo.svg?v=20" alt="Tall Tiger" class="logo" onerror="this.style.display='none'; document.getElementById('textLogo').style.display='block';">
             <h1 id="textLogo" style="display: none; font-size: 3rem; font-weight: 900; margin-bottom: 10px; text-shadow: 0 4px 8px rgba(0,0,0,0.3); letter-spacing: 3px;">🐯 TALL TIGER 🐯</h1>
-            <p class="tagline">Mini Motorways Challenge</p>
+            <p class="tagline">Tap 'Em All!</p>
         </header>
 
         <div class="game-container">
             <canvas id="gameCanvas"></canvas>
             
             <div class="game-overlay" id="startScreen">
-                <h2>🚗 Build the Roads! 🏠</h2>
-                <p><strong>Click and drag</strong> to draw roads</p>
-                <p>Connect <strong style="color: #4CAF50;">houses</strong> to <strong style="color: #2196F3;">destinations</strong></p>
-                <p>Keep traffic flowing from Moosach to Andreas-Vöst-Straße!</p>
-                <button class="btn-primary" id="startBtn">Start Building</button>
+                <h2>🐯 Tiger Tapper! 🐯</h2>
+                <p><strong>Tap the tigers</strong> before they hide!</p>
+                <p>The faster you tap, the higher you score!</p>
+                <p>Miss 3 tigers and it's game over!</p>
+                <button class="btn-primary" id="startBtn">Start Tapping</button>
             </div>
 
             <div class="game-overlay hidden" id="gameOverScreen">
-                <h2>Traffic Jam!</h2>
-                <p>Cars Delivered: <span id="finalScore">0</span></p>
-                <p>Best Score: <span id="bestScore">0</span></p>
+                <h2>Game Over!</h2>
+                <p>Score: <span id="finalScore">0</span></p>
+                <p>Best: <span id="bestScore">0</span></p>
                 <p id="gameOverMessage"></p>
-                <button class="btn-primary" id="restartBtn">Try Again</button>
+                <button class="btn-primary" id="restartBtn">Tap Again</button>
             </div>
 
             <div class="score-panel">
                 <div class="score-item">
-                    <span class="score-label">🚗 Delivered:</span>
+                    <span class="score-label">💯 Score:</span>
                     <span class="score-value" id="currentScore">0</span>
                 </div>
                 <div class="score-item">
-                    <span class="score-label">🛣️ Roads:</span>
-                    <span class="score-value" id="roadCount">10</span>
+                    <span class="score-label">⏱️ Time:</span>
+                    <span class="score-value" id="timeLeft">30</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">❤️ Lives:</span>
+                    <span class="score-value" id="livesLeft">3</span>
                 </div>
                 <div class="score-item">
                     <span class="score-label">🏆 Best:</span>
@@ -50,19 +54,19 @@
             </div>
 
             <div class="controls-hint" id="controlsHint">
-                <p>🖱️ Click & Drag to Build Roads 🛣️</p>
+                <p>👆 Tap the Tigers as Fast as You Can! 👆</p>
             </div>
         </div>
 
         <div class="instructions">
             <h3>How to Play</h3>
             <ul>
-                <li>🏠 Houses spawn cars that need to reach destinations</li>
-                <li>🖱️ Click and drag to draw roads connecting buildings</li>
-                <li>🚗 Cars automatically drive on your roads</li>
-                <li>📦 Each successful delivery earns points</li>
-                <li>⚠️ If a house gets too backed up - Game Over!</li>
-                <li>🎯 Limited roads - plan your route wisely!</li>
+                <li>🐯 Tigers will pop out from bushes randomly</li>
+                <li>👆 Click or tap them before they hide!</li>
+                <li>⚡ Fast taps = Bonus points!</li>
+                <li>💎 Golden tigers give extra points!</li>
+                <li>❌ Miss 3 tigers = Game Over</li>
+                <li>⏰ Game lasts 30 seconds - maximize your score!</li>
             </ul>
         </div>
 
@@ -71,6 +75,6 @@
         </footer>
     </div>
 
-    <script src="game.js?v=10"></script>
+    <script src="game.js?v=20"></script>
 </body>
 </html>
