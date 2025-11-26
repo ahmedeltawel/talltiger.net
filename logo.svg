@@ -1,44 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 150" width="400" height="150">
-  <!-- Tiger silhouette outline -->
-  <g id="tiger-body" fill="#000000">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120">
+  <!-- Background tiger silhouette -->
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Tiger silhouette -->
+  <g fill="#000000" opacity="0.8">
     <!-- Body -->
-    <ellipse cx="200" cy="80" rx="120" ry="50"/>
-    
+    <ellipse cx="250" cy="70" rx="140" ry="45"/>
     <!-- Head -->
-    <ellipse cx="90" cy="70" rx="45" ry="40"/>
-    
+    <ellipse cx="120" cy="65" rx="50" ry="45"/>
     <!-- Ears -->
-    <ellipse cx="65" cy="45" rx="15" ry="20" transform="rotate(-20 65 45)"/>
-    <ellipse cx="115" cy="45" rx="15" ry="20" transform="rotate(20 115 45)"/>
-    
-    <!-- Front legs -->
-    <rect x="140" y="110" width="20" height="35" rx="10"/>
-    <rect x="180" y="110" width="20" height="35" rx="10"/>
-    
-    <!-- Back legs -->
-    <rect x="240" y="110" width="20" height="35" rx="10"/>
-    <rect x="280" y="110" width="20" height="35" rx="10"/>
-    
-    <!-- Tail (curved up) -->
-    <path d="M 310 80 Q 340 60, 360 40 Q 365 35, 370 40 Q 365 45, 360 50 Q 335 70, 310 85 Z"/>
-    
-    <!-- Nose/snout -->
-    <ellipse cx="50" cy="75" rx="12" ry="10"/>
+    <ellipse cx="90" cy="35" rx="18" ry="22"/>
+    <ellipse cx="150" cy="35" rx="18" ry="22"/>
+    <!-- Legs -->
+    <rect x="170" y="100" width="18" height="30" rx="9"/>
+    <rect x="210" y="100" width="18" height="30" rx="9"/>
+    <rect x="280" y="100" width="18" height="30" rx="9"/>
+    <rect x="320" y="100" width="18" height="30" rx="9"/>
+    <!-- Tail -->
+    <path d="M 380 70 Q 420 50, 450 35 Q 455 30, 460 35 Q 455 40, 450 45 Q 415 60, 380 75 Z"/>
   </g>
   
-  <!-- Text integrated into the tiger -->
-  <text x="200" y="85" font-family="Impact, Arial Black, sans-serif" font-size="38" font-weight="bold" fill="#FF6B00" text-anchor="middle" letter-spacing="2">
+  <!-- Main text with gradient -->
+  <defs>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF6B00;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FF8C00;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <text x="250" y="75" 
+        font-family="Impact, 'Arial Black', sans-serif" 
+        font-size="52" 
+        font-weight="900" 
+        fill="url(#textGrad)" 
+        text-anchor="middle"
+        letter-spacing="4"
+        filter="url(#shadow)">
     TALL TIGER
   </text>
   
-  <!-- Tiger stripes overlay on text -->
-  <g opacity="0.3">
-    <rect x="120" y="60" width="8" height="40" fill="#000" transform="rotate(-15 124 80)"/>
-    <rect x="150" y="60" width="8" height="40" fill="#000" transform="rotate(-10 154 80)"/>
-    <rect x="180" y="60" width="8" height="40" fill="#000" transform="rotate(-5 184 80)"/>
-    <rect x="210" y="60" width="8" height="40" fill="#000"/>
-    <rect x="240" y="60" width="8" height="40" fill="#000" transform="rotate(5 244 80)"/>
-    <rect x="270" y="60" width="8" height="40" fill="#000" transform="rotate(10 274 80)"/>
-  </g>
+  <!-- White outline for text -->
+  <text x="250" y="75" 
+        font-family="Impact, 'Arial Black', sans-serif" 
+        font-size="52" 
+        font-weight="900" 
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="3"
+        text-anchor="middle"
+        letter-spacing="4">
+    TALL TIGER
+  </text>
 </svg>
 
