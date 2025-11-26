@@ -3,45 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tall Tiger - Stack 'Em High!</title>
-    <meta name="description" content="Stack tigers as high as you can! A fun physics-based stacking game.">
-    <link rel="stylesheet" href="style.css?v=2">
+    <title>Tall Tiger - Mini Motorways</title>
+    <meta name="description" content="Build roads and manage traffic flow in this addictive puzzle game!">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div class="container">
         <header>
             <img src="logo.svg" alt="Tall Tiger" class="logo" onerror="this.style.display='none'; document.getElementById('textLogo').style.display='block';">
             <h1 id="textLogo" style="display: none; font-size: 3rem; font-weight: 900; margin-bottom: 10px; text-shadow: 0 4px 8px rgba(0,0,0,0.3); letter-spacing: 3px;">🐯 TALL TIGER 🐯</h1>
-            <p class="tagline">Stack 'Em High!</p>
+            <p class="tagline">Mini Motorways Challenge</p>
         </header>
 
         <div class="game-container">
             <canvas id="gameCanvas"></canvas>
             
             <div class="game-overlay" id="startScreen">
-                <h2>🐯 Tower of Tigers 🐯</h2>
-                <p>Click or tap to <strong>DROP TIGERS</strong></p>
-                <p>Stack them as high as possible!</p>
-                <p>Don't let them fall off the platform!</p>
-                <button class="btn-primary" id="startBtn">Start Stacking</button>
+                <h2>🚗 Build the Roads! 🏠</h2>
+                <p><strong>Click and drag</strong> to draw roads</p>
+                <p>Connect <strong style="color: #4CAF50;">houses</strong> to <strong style="color: #2196F3;">destinations</strong></p>
+                <p>Keep traffic flowing from Moosach to Andreas-Vöst-Straße!</p>
+                <button class="btn-primary" id="startBtn">Start Building</button>
             </div>
 
             <div class="game-overlay hidden" id="gameOverScreen">
-                <h2>Tower Collapsed!</h2>
-                <p>Tigers Stacked: <span id="finalScore">0</span></p>
-                <p>Best Tower: <span id="bestScore">0</span></p>
-                <p id="heightMessage"></p>
-                <button class="btn-primary" id="restartBtn">Stack Again</button>
+                <h2>Traffic Jam!</h2>
+                <p>Cars Delivered: <span id="finalScore">0</span></p>
+                <p>Best Score: <span id="bestScore">0</span></p>
+                <p id="gameOverMessage"></p>
+                <button class="btn-primary" id="restartBtn">Try Again</button>
             </div>
 
             <div class="score-panel">
                 <div class="score-item">
-                    <span class="score-label">🐯 Tigers:</span>
+                    <span class="score-label">🚗 Delivered:</span>
                     <span class="score-value" id="currentScore">0</span>
                 </div>
                 <div class="score-item">
-                    <span class="score-label">📏 Height:</span>
-                    <span class="score-value" id="towerHeight">0m</span>
+                    <span class="score-label">🛣️ Roads:</span>
+                    <span class="score-value" id="roadCount">10</span>
                 </div>
                 <div class="score-item">
                     <span class="score-label">🏆 Best:</span>
@@ -50,18 +50,19 @@
             </div>
 
             <div class="controls-hint" id="controlsHint">
-                <p>👆 Click or Tap to Drop Tiger 👆</p>
+                <p>🖱️ Click & Drag to Build Roads 🛣️</p>
             </div>
         </div>
 
         <div class="instructions">
-            <h3>How to Stack</h3>
+            <h3>How to Play</h3>
             <ul>
-                <li>🎯 A tiger swings back and forth at the top</li>
-                <li>👆 Click or Tap to drop the tiger</li>
-                <li>🎪 Land tigers on top of each other carefully</li>
-                <li>⚠️ If a tiger falls off - Game Over!</li>
-                <li>🏆 Build the tallest tower to win!</li>
+                <li>🏠 Houses spawn cars that need to reach destinations</li>
+                <li>🖱️ Click and drag to draw roads connecting buildings</li>
+                <li>🚗 Cars automatically drive on your roads</li>
+                <li>📦 Each successful delivery earns points</li>
+                <li>⚠️ If a house gets too backed up - Game Over!</li>
+                <li>🎯 Limited roads - plan your route wisely!</li>
             </ul>
         </div>
 
@@ -70,6 +71,6 @@
         </footer>
     </div>
 
-    <script src="game.js?v=2"></script>
+    <script src="game.js?v=3"></script>
 </body>
 </html>

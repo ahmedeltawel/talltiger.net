@@ -5,7 +5,7 @@ const ctx = canvas.getContext('2d');
 // Set canvas size
 function resizeCanvas() {
     const container = canvas.parentElement;
-    const maxWidth = 500;
+    const maxWidth = 600;
     const width = Math.min(maxWidth, container.clientWidth - 40);
     canvas.width = width;
     canvas.height = 600;
@@ -15,17 +15,20 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 // Game Variables
-let gameState = 'start'; // start, playing, gameOver
+let gameState = 'start';
 let score = 0;
-let towerHeight = 0;
-let highScore = localStorage.getItem('tallTigerHighScore') || 0;
-let tigers = [];
-let currentTiger = null;
-let platform = null;
-let swingDirection = 1;
-let swingSpeed = 2;
-let gravity = 0.5;
-let gameLoop;
+let highScore = localStorage.getItem('tallTigerMotorwaysScore') || 0;
+let roads = [];
+let maxRoads = 10;
+let houses = [];
+let destinations = [];
+let cars = [];
+let isDrawing = false;
+let drawStart = null;
+let drawEnd = null;
+let gridSize = 30;
+let carSpawnTimer = 0;
+let carSpawnInterval = 180; // frames between car spawns
 
 // UI Elements
 const startScreen = document.getElementById('startScreen');
@@ -33,235 +36,439 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 const currentScoreEl = document.getElementById('currentScore');
-const towerHeightEl = document.getElementById('towerHeight');
+const roadCountEl = document.getElementById('roadCount');
 const highScoreEl = document.getElementById('highScore');
 const finalScoreEl = document.getElementById('finalScore');
 const bestScoreEl = document.getElementById('bestScore');
-const heightMessageEl = document.getElementById('heightMessage');
+const gameOverMessageEl = document.getElementById('gameOverMessage');
 const controlsHint = document.getElementById('controlsHint');
 
-// Update high score display
 highScoreEl.textContent = highScore;
 
-// Tiger Class
-class Tiger {
-    constructor(x, y, isSwinging = false) {
-        this.width = 60;
-        this.height = 60;
+// Helper Functions
+function snapToGrid(x, y) {
+    return {
+        x: Math.round(x / gridSize) * gridSize,
+        y: Math.round(y / gridSize) * gridSize
+    };
+}
+
+function distance(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+}
+
+// Building Classes
+class Building {
+    constructor(x, y, type, color) {
         this.x = x;
         this.y = y;
-        this.velocityY = 0;
-        this.velocityX = 0;
-        this.isSwinging = isSwinging;
-        this.isFalling = false;
-        this.rotation = 0;
-        this.rotationSpeed = 0;
+        this.type = type; // 'house' or 'destination'
+        this.color = color;
+        this.size = 20;
+        this.queue = 0;
+        this.maxQueue = 5;
     }
 
     draw() {
         ctx.save();
         
-        // Translate to tiger center for rotation
-        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-        ctx.rotate(this.rotation);
+        // Shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
         
-        // Draw tiger emoji
-        ctx.font = `${this.width}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Add shadow for depth
-        if (!this.isFalling) {
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-            ctx.shadowBlur = 8;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
+        if (this.type === 'house') {
+            // Draw house
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+            
+            // Roof
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(this.x - this.size/2 - 3, this.y - this.size/2);
+            ctx.lineTo(this.x, this.y - this.size/2 - 8);
+            ctx.lineTo(this.x + this.size/2 + 3, this.y - this.size/2);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            // Draw destination (circle)
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Flag
+            ctx.strokeStyle = '#FFF';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - this.size/2);
+            ctx.lineTo(this.x, this.y - this.size/2 - 10);
+            ctx.stroke();
         }
         
-        ctx.fillText('🐯', 0, 0);
+        // Queue indicator
+        if (this.queue > 0 && this.type === 'house') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.queue, this.x, this.y + this.size + 8);
+        }
         
+        ctx.restore();
+    }
+}
+
+// Road Class
+class Road {
+    constructor(start, end) {
+        this.start = start;
+        this.end = end;
+        this.width = 8;
+    }
+
+    draw() {
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = this.width;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.start.x, this.start.y);
+        ctx.lineTo(this.end.x, this.end.y);
+        ctx.stroke();
+        
+        // Road markings
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 10]);
+        ctx.beginPath();
+        ctx.moveTo(this.start.x, this.start.y);
+        ctx.lineTo(this.end.x, this.end.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    isPointOnRoad(x, y, tolerance = 15) {
+        const d = this.distanceToPoint(x, y);
+        return d < tolerance;
+    }
+
+    distanceToPoint(x, y) {
+        const A = x - this.start.x;
+        const B = y - this.start.y;
+        const C = this.end.x - this.start.x;
+        const D = this.end.y - this.start.y;
+
+        const dot = A * C + B * D;
+        const len_sq = C * C + D * D;
+        let param = -1;
+        
+        if (len_sq != 0) param = dot / len_sq;
+
+        let xx, yy;
+
+        if (param < 0) {
+            xx = this.start.x;
+            yy = this.start.y;
+        } else if (param > 1) {
+            xx = this.end.x;
+            yy = this.end.y;
+        } else {
+            xx = this.start.x + param * C;
+            yy = this.start.y + param * D;
+        }
+
+        const dx = x - xx;
+        const dy = y - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+}
+
+// Car Class
+class Car {
+    constructor(start, color) {
+        this.x = start.x;
+        this.y = start.y;
+        this.color = color;
+        this.size = 6;
+        this.speed = 2;
+        this.target = null;
+        this.path = [];
+        this.stuck = false;
+        this.stuckTimer = 0;
+        this.maxStuckTime = 300; // 5 seconds at 60fps
+        
+        // Find destination
+        this.findDestination();
+    }
+
+    findDestination() {
+        const matching = destinations.filter(d => d.color === this.color);
+        if (matching.length > 0) {
+            this.target = matching[0];
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 3;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 
     update() {
-        if (this.isSwinging) {
-            // Swing back and forth
-            this.x += swingSpeed * swingDirection;
-            
-            // Reverse direction at edges
-            if (this.x <= 0) {
-                this.x = 0;
-                swingDirection = 1;
+        if (!this.target) return;
+
+        // Simple pathfinding: move towards target on roads
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 15) {
+            // Reached destination
+            return 'arrived';
+        }
+
+        // Check if on a road
+        let onRoad = false;
+        for (let road of roads) {
+            if (road.isPointOnRoad(this.x, this.y, 12)) {
+                onRoad = true;
+                break;
             }
-            if (this.x >= canvas.width - this.width) {
-                this.x = canvas.width - this.width;
-                swingDirection = -1;
-            }
-        } else if (!this.isFalling) {
-            // Apply gravity
-            this.velocityY += gravity;
-            this.y += this.velocityY;
-            
-            // Check collision with platform
-            if (platform && this.checkCollision(platform)) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isFalling = false;
-            }
-            
-            // Check collision with other tigers
-            for (let other of tigers) {
-                if (other !== this && !other.isFalling && this.checkCollision(other)) {
-                    this.y = other.y - this.height;
-                    this.velocityY = 0;
-                    this.isFalling = false;
-                    
-                    // Add slight wobble effect
-                    this.rotation = (Math.random() - 0.5) * 0.1;
-                    break;
-                }
-            }
-            
-            // Check if tiger fell off screen
-            if (this.y > canvas.height) {
-                this.isFalling = true;
-                endGame();
-            }
-            
-            // Check if tiger fell off platform horizontally
-            if (this.y + this.height > platform.y - 10) {
-                let tigerCenterX = this.x + this.width / 2;
-                if (tigerCenterX < platform.x || tigerCenterX > platform.x + platform.width) {
-                    this.isFalling = true;
-                    this.velocityX = (Math.random() - 0.5) * 5;
-                    this.rotationSpeed = (Math.random() - 0.5) * 0.2;
-                    endGame();
-                }
-            }
+        }
+
+        if (onRoad || dist < 50) {
+            // Move towards target
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+            this.stuckTimer = 0;
         } else {
-            // Falling animation
-            this.velocityY += gravity;
-            this.y += this.velocityY;
-            this.x += this.velocityX;
-            this.rotation += this.rotationSpeed;
+            // Try to find nearest road
+            let nearestRoad = null;
+            let nearestDist = Infinity;
+            
+            for (let road of roads) {
+                const d = road.distanceToPoint(this.x, this.y);
+                if (d < nearestDist) {
+                    nearestDist = d;
+                    nearestRoad = road;
+                }
+            }
+
+            if (nearestRoad && nearestDist < 100) {
+                // Move towards nearest road
+                const roadMidX = (nearestRoad.start.x + nearestRoad.end.x) / 2;
+                const roadMidY = (nearestRoad.start.y + nearestRoad.end.y) / 2;
+                const rdx = roadMidX - this.x;
+                const rdy = roadMidY - this.y;
+                const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
+                
+                this.x += (rdx / rdist) * this.speed;
+                this.y += (rdy / rdist) * this.speed;
+            } else {
+                // Stuck
+                this.stuckTimer++;
+            }
         }
-    }
 
-    checkCollision(other) {
-        return this.x < other.x + other.width &&
-               this.x + this.width > other.x &&
-               this.y < other.y + other.height &&
-               this.y + this.height > other.y &&
-               this.velocityY > 0;
-    }
+        if (this.stuckTimer > this.maxStuckTime) {
+            return 'stuck';
+        }
 
-    drop() {
-        this.isSwinging = false;
-        this.velocityY = 0;
+        return 'driving';
     }
 }
 
-// Platform Class
-class Platform {
-    constructor() {
-        this.width = 150;
-        this.height = 20;
-        this.x = canvas.width / 2 - this.width / 2;
-        this.y = canvas.height - 50;
-    }
-
-    draw() {
-        // Ground/grass effect
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        
-        // Grass on top
-        ctx.fillStyle = '#228B22';
-        ctx.fillRect(this.x, this.y, this.width, 5);
-        
-        // Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.fillRect(this.x, this.y + this.height, this.width, 3);
-    }
-}
-
-// Initialize game
+// Initialize Game
 function initGame() {
-    tigers = [];
+    roads = [];
+    cars = [];
+    houses = [];
+    destinations = [];
     score = 0;
-    towerHeight = 0;
-    swingDirection = 1;
+    maxRoads = 10;
+    carSpawnTimer = 0;
+    
     currentScoreEl.textContent = '0';
-    towerHeightEl.textContent = '0m';
+    roadCountEl.textContent = maxRoads;
     controlsHint.classList.remove('hidden');
+
+    // Create buildings (Moosach to Andreas-Vöst-Straße theme)
+    const padding = 60;
     
-    // Create platform
-    platform = new Platform();
+    // Houses (green - start points)
+    houses.push(new Building(padding + 30, padding + 30, 'house', '#4CAF50'));
+    houses.push(new Building(padding + 30, canvas.height - padding - 30, 'house', '#8BC34A'));
     
-    // Create first swinging tiger
-    currentTiger = new Tiger(canvas.width / 2 - 30, 50, true);
+    // Destinations (blue - end points)
+    destinations.push(new Building(canvas.width - padding - 30, padding + 30, 'destination', '#2196F3'));
+    destinations.push(new Building(canvas.width - padding - 30, canvas.height - padding - 30, 'destination', '#03A9F4'));
 }
 
-// Spawn next tiger
-function spawnNextTiger() {
-    if (gameState !== 'playing') return;
+// Mouse/Touch handling
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     
-    score++;
-    currentScoreEl.textContent = score;
-    
-    // Calculate tower height
-    if (tigers.length > 0) {
-        let topTiger = tigers.reduce((highest, tiger) => 
-            tiger.y < highest.y ? tiger : highest
-        );
-        towerHeight = Math.floor((canvas.height - 50 - topTiger.y) / 10);
-        towerHeightEl.textContent = towerHeight + 'm';
+    let clientX, clientY;
+    if (e.touches) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
     }
     
-    // Spawn new tiger at top
-    setTimeout(() => {
-        if (gameState === 'playing') {
-            currentTiger = new Tiger(canvas.width / 2 - 30, 50, true);
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', drawing);
+canvas.addEventListener('mouseup', endDrawing);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, { passive: false });
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawing(e); }, { passive: false });
+canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDrawing(e); }, { passive: false });
+
+function startDrawing(e) {
+    if (gameState !== 'playing') return;
+    if (roads.length >= maxRoads) return;
+    
+    const pos = getMousePos(e);
+    drawStart = snapToGrid(pos.x, pos.y);
+    isDrawing = true;
+}
+
+function drawing(e) {
+    if (!isDrawing || gameState !== 'playing') return;
+    
+    const pos = getMousePos(e);
+    drawEnd = snapToGrid(pos.x, pos.y);
+}
+
+function endDrawing(e) {
+    if (!isDrawing || gameState !== 'playing') return;
+    
+    if (drawStart && drawEnd && distance(drawStart, drawEnd) > gridSize) {
+        roads.push(new Road(drawStart, drawEnd));
+        roadCountEl.textContent = maxRoads - roads.length;
+        
+        if (roads.length >= maxRoads) {
+            controlsHint.classList.add('hidden');
         }
-    }, 500);
+    }
+    
+    isDrawing = false;
+    drawStart = null;
+    drawEnd = null;
 }
 
-// Drop current tiger
-function dropTiger() {
-    if (gameState !== 'playing' || !currentTiger || !currentTiger.isSwinging) return;
+// Spawn Cars
+function spawnCars() {
+    carSpawnTimer++;
     
-    currentTiger.drop();
-    tigers.push(currentTiger);
-    
-    spawnNextTiger();
+    if (carSpawnTimer >= carSpawnInterval) {
+        carSpawnTimer = 0;
+        
+        // Spawn from random house
+        if (houses.length > 0) {
+            const house = houses[Math.floor(Math.random() * houses.length)];
+            
+            if (house.queue < house.maxQueue) {
+                house.queue++;
+                
+                // Match house color to destination
+                let carColor = house.color;
+                cars.push(new Car(house, carColor));
+            } else {
+                // House overloaded
+                endGame('A house got too backed up!');
+            }
+        }
+    }
 }
 
-// Game update function
+// Game Update Loop
 function update() {
     if (gameState !== 'playing' && gameState !== 'gameOver') return;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw platform
-    platform.draw();
-
-    // Update and draw tigers
-    for (let tiger of tigers) {
-        tiger.update();
-        tiger.draw();
+    // Draw grid (subtle)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
     }
 
-    // Update and draw current swinging tiger
-    if (currentTiger) {
-        currentTiger.update();
-        currentTiger.draw();
+    // Draw roads
+    roads.forEach(road => road.draw());
+
+    // Draw current drawing
+    if (isDrawing && drawStart && drawEnd) {
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+        ctx.lineWidth = 8;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(drawStart.x, drawStart.y);
+        ctx.lineTo(drawEnd.x, drawEnd.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
     }
+
+    // Draw buildings
+    houses.forEach(h => h.draw());
+    destinations.forEach(d => d.draw());
+
+    // Update and draw cars
+    if (gameState === 'playing') {
+        spawnCars();
+        
+        for (let i = cars.length - 1; i >= 0; i--) {
+            const status = cars[i].update();
+            
+            if (status === 'arrived') {
+                score++;
+                currentScoreEl.textContent = score;
+                cars.splice(i, 1);
+                
+                // Decrease queue
+                houses.forEach(h => {
+                    if (h.queue > 0) h.queue--;
+                });
+                
+                // Every 5 deliveries, speed up spawning
+                if (score % 5 === 0) {
+                    carSpawnInterval = Math.max(60, carSpawnInterval - 10);
+                }
+            } else if (status === 'stuck') {
+                endGame('A car got stuck without a road!');
+                cars.splice(i, 1);
+            }
+        }
+    }
+
+    cars.forEach(car => car.draw());
 
     requestAnimationFrame(update);
 }
 
-// Start game
+// Start Game
 function startGame() {
     gameState = 'playing';
     startScreen.classList.add('hidden');
@@ -270,42 +477,24 @@ function startGame() {
     update();
 }
 
-// End game
-function endGame() {
+// End Game
+function endGame(message) {
     if (gameState === 'gameOver') return;
     
     gameState = 'gameOver';
     controlsHint.classList.add('hidden');
     
-    // Calculate final score (subtract 1 because we count the falling tiger)
-    let finalScore = Math.max(0, score - 1);
-    
-    // Update high score
-    if (finalScore > highScore) {
-        highScore = finalScore;
-        localStorage.setItem('tallTigerHighScore', highScore);
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('tallTigerMotorwaysScore', highScore);
         highScoreEl.textContent = highScore;
-    }
-    
-    // Show messages based on performance
-    let message = '';
-    if (finalScore === 0) {
-        message = 'Try again! You can do better! 💪';
-    } else if (finalScore < 5) {
-        message = 'Good start! Keep practicing! 🎯';
-    } else if (finalScore < 10) {
-        message = 'Nice tower! You\'re getting good! 🌟';
-    } else if (finalScore < 20) {
-        message = 'Impressive! That\'s a tall tower! 🏗️';
-    } else if (finalScore < 30) {
-        message = 'Amazing! You\'re a stacking master! 🏆';
+        gameOverMessageEl.textContent = '🎉 New High Score! ' + message;
     } else {
-        message = 'LEGENDARY! Unbelievable tower! 👑';
+        gameOverMessageEl.textContent = message;
     }
     
-    finalScoreEl.textContent = finalScore;
+    finalScoreEl.textContent = score;
     bestScoreEl.textContent = highScore;
-    heightMessageEl.textContent = message;
     
     setTimeout(() => {
         gameOverScreen.classList.remove('hidden');
@@ -316,29 +505,16 @@ function endGame() {
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-// Click/tap to drop tiger
-canvas.addEventListener('click', dropTiger);
-canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    dropTiger();
-});
-
-// Spacebar to drop
 document.addEventListener('keydown', (e) => {
     if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         if (gameState === 'start') {
             startGame();
-        } else if (gameState === 'playing') {
-            dropTiger();
         } else if (gameState === 'gameOver') {
             startGame();
         }
     }
 });
-
-// Prevent default touch behavior
-canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
 
 // Initialize
 initGame();
