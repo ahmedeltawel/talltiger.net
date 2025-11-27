@@ -1,13 +1,22 @@
 # 🐯 Tall Tiger
 
-A fun and addictive jumping game where you help a tiger reach the sky! Jump on platforms and see how high you can go!
+A modern portfolio landing page showcasing bold SaaS projects and featuring an interactive Sky Pilot game. Where bold ideas become reality.
 
-## 🎮 How to Play
+## ✨ Features
 
-- Use **Arrow Keys** (← →) or **A/D** keys to move the tiger left and right
-- The tiger automatically jumps when landing on platforms
-- Try to climb as high as possible without falling off the bottom
-- Beat your high score!
+- **Portfolio Showcase**: Display of upcoming innovative SaaS projects
+- **Interactive Game**: Embedded Sky Pilot challenge - a Flappy Bird-style airplane game
+- **Modern Design**: Sleek dark theme with animated gradients and glassmorphism effects
+- **Fully Responsive**: Optimized for desktop, tablet, and mobile devices
+
+## 🎮 Sky Pilot Game - How to Play
+
+- Use **Arrow Keys** (↑ ↓), **W/S** keys, or **Mouse** to control the airplane
+- Dodge obstacles coming from the right
+- Collect ⭐ stars for bonus points (+50 points)
+- Pass through gaps for points (+10 points)
+- The game speeds up progressively - stay sharp!
+- Beat your high score (saved in browser)
 
 ## 🚀 Deploy to Vercel
 
@@ -57,7 +66,7 @@ vercel --prod
 ```bash
 git init
 git add .
-git commit -m "Initial commit: Tall Tiger game"
+git commit -m "Initial commit: Tall Tiger portfolio site"
 git branch -M main
 git remote add origin YOUR_GITHUB_REPO_URL
 git push -u origin main
@@ -83,7 +92,7 @@ git push -u origin main
 
 ## 🛠️ Local Development
 
-To run the game locally:
+To run the site locally:
 
 ### Option 1: Using Python
 ```bash
@@ -102,38 +111,73 @@ Install the "Live Server" extension and click "Go Live"
 ## 📁 Project Structure
 
 ```
-talltiger/
-├── index.html       # Main HTML file
-├── style.css        # Styling and animations
-├── game.js          # Game logic
-├── vercel.json      # Vercel configuration
+talltiger.net/
+├── index.html       # Main landing page with portfolio & game
+├── style.css        # Modern styling with animations & gradients
+├── game.js          # Sky Pilot game logic (Canvas API)
+├── logo.svg         # Tall Tiger branding logo
 ├── package.json     # Project metadata
 └── README.md        # This file
 ```
 
-## 🎨 Features
+## 🎨 Project Highlights
 
-- ✅ Smooth platformer mechanics
-- ✅ Responsive design (works on mobile and desktop)
+### Portfolio Section
+- **Hero Section**: Animated logo with glowing effects and bold headline
+- **4 Upcoming Projects**: 
+  - 🚀 Project Alpha - Revolutionary productivity tool
+  - 💡 Project Nova - AI-powered analytics platform
+  - 🎯 Project Zenith - Smart workflow automation
+  - 🌟 Project Stellar - Next-gen collaboration suite
+
+### Sky Pilot Game
+- ✅ Smooth flight mechanics with multiple control options
+- ✅ Progressive difficulty system
+- ✅ Star collection for bonus points
+- ✅ Score tracking with localStorage persistence
+- ✅ Responsive canvas that adapts to screen size
 - ✅ Touch controls for mobile devices
-- ✅ Score tracking with local storage
-- ✅ Beautiful gradient background
-- ✅ Animated UI elements
-- ✅ High score persistence
+- ✅ Beautiful animated background with floating icons
+- ✅ Particle effects and visual polish
 
 ## 🔧 Customization
 
-### Change Colors
-Edit the gradients in `style.css`:
+### Change Theme Colors
+Edit the gradients and colors in `style.css`:
 ```css
-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Primary gradient */
+background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+
+/* Hero accent gradient */
+background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 30%, #8B45FF 70%, #FF6B35 100%);
 ```
 
-### Adjust Difficulty
-In `game.js`, modify:
-- `jumpPower`: Change jump height (line 72)
-- `gravity`: Adjust falling speed (line 71)
-- `speed`: Change horizontal movement speed (line 73)
+### Adjust Game Difficulty
+In `game.js`, modify these variables:
+- `gameSpeed`: Initial game speed (line 13, default: 2)
+- `gap`: Space between obstacles (line 50, default: 188)
+- `player.speed`: Airplane responsiveness (line 23, default: 0.15)
+- Speed increase rate: Line 317 (increases every 300 frames)
+
+### Update Projects
+Edit the project cards in `index.html` (lines 33-59):
+```html
+<div class="project-card coming-soon">
+    <div class="project-icon">🚀</div>
+    <h3 class="project-title">Your Project Name</h3>
+    <p class="project-description">Your description</p>
+    <span class="project-status">Your Status</span>
+</div>
+```
+
+## 🎨 Design Features
+
+- **Modern UI**: Glassmorphism with backdrop filters
+- **Animated Gradients**: Dynamic color transitions throughout
+- **Smooth Animations**: Fade-ins, float effects, hover states
+- **Dark Theme**: Professional dark background with vibrant accents
+- **Responsive Layout**: Mobile-first design with breakpoints at 768px and 480px
+- **Performance**: Pure CSS animations with hardware acceleration
 
 ## 📱 Browser Support
 
@@ -143,13 +187,21 @@ In `game.js`, modify:
 - Edge ✅
 - Mobile browsers ✅
 
+## 🛠️ Tech Stack
+
+- **HTML5**: Semantic markup with Canvas API
+- **CSS3**: Modern features (Grid, Flexbox, Custom Properties, Animations)
+- **Vanilla JavaScript**: No frameworks or dependencies
+- **localStorage API**: For high score persistence
+- **Canvas API**: For game rendering
+
 ## 📄 License
 
 MIT License - Feel free to use and modify!
 
 ## 🎉 Enjoy!
 
-Have fun playing Tall Tiger! Try to beat your high score and challenge your friends!
+Experience the Tall Tiger vision - where innovative SaaS projects come to life. Play Sky Pilot and reach for the stars!
 
 ---
 
