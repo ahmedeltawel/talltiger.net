@@ -3,78 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tall Tiger - Tiger Tapper!</title>
-    <meta name="description" content="Tap the tigers before they disappear! Fast-paced reflex game!">
-    <link rel="stylesheet" href="style.css?v=20">
+    <title>Tall Tiger - SaaS Projects Portfolio</title>
+    <meta name="description" content="Portfolio of innovative SaaS projects and interactive experiences.">
+    <link rel="stylesheet" href="style.css?v=85">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <img src="logo.svg?v=20" alt="Tall Tiger" class="logo" onerror="this.style.display='none'; document.getElementById('textLogo').style.display='block';">
-            <h1 id="textLogo" style="display: none; font-size: 3rem; font-weight: 900; margin-bottom: 10px; text-shadow: 0 4px 8px rgba(0,0,0,0.3); letter-spacing: 3px;">🐯 TALL TIGER 🐯</h1>
-            <p class="tagline">Tap 'Em All!</p>
-        </header>
-
-        <div class="game-container">
-            <canvas id="gameCanvas"></canvas>
-            
-            <div class="game-overlay" id="startScreen">
-                <h2>🐯 Tiger Tapper! 🐯</h2>
-                <p><strong>Tap the tigers</strong> before they hide!</p>
-                <p>The faster you tap, the higher you score!</p>
-                <p>Miss 3 tigers and it's game over!</p>
-                <button class="btn-primary" id="startBtn">Start Tapping</button>
-            </div>
-
-            <div class="game-overlay hidden" id="gameOverScreen">
-                <h2>Game Over!</h2>
-                <p>Score: <span id="finalScore">0</span></p>
-                <p>Best: <span id="bestScore">0</span></p>
-                <p id="gameOverMessage"></p>
-                <button class="btn-primary" id="restartBtn">Tap Again</button>
-            </div>
-
-            <div class="score-panel">
-                <div class="score-item">
-                    <span class="score-label">💯 Score:</span>
-                    <span class="score-value" id="currentScore">0</span>
-                </div>
-                <div class="score-item">
-                    <span class="score-label">⏱️ Time:</span>
-                    <span class="score-value" id="timeLeft">30</span>
-                </div>
-                <div class="score-item">
-                    <span class="score-label">❤️ Lives:</span>
-                    <span class="score-value" id="livesLeft">3</span>
-                </div>
-                <div class="score-item">
-                    <span class="score-label">🏆 Best:</span>
-                    <span class="score-value" id="highScore">0</span>
+    <div class="page-wrapper">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <img src="logo.svg?v=85" alt="Tall Tiger" class="logo" onerror="this.style.display='none'; document.getElementById('textLogo').style.display='block';">
+                <h1 id="textLogo" style="display: none; font-size: 3rem; font-weight: 900; margin-bottom: 10px; text-shadow: 0 4px 8px rgba(0,0,0,0.3); letter-spacing: 3px;">🐯 TALL TIGER 🐯</h1>
+                <h2 class="hero-title">Where Bold Ideas</h2>
+                <h2 class="hero-title-accent">Become Reality</h2>
+                <p class="hero-description">We're crafting the next generation of SaaS products that don't just solve problems—they transform industries. Get ready to witness innovation that roars.</p>
+                <div class="hero-badges">
+                    <span class="hero-badge">🚀 Launching Soon</span>
+                    <span class="hero-badge">💡 Innovation First</span>
+                    <span class="hero-badge">⚡ Built for Scale</span>
                 </div>
             </div>
+        </section>
 
-            <div class="controls-hint" id="controlsHint">
-                <p>👆 Tap the Tigers as Fast as You Can! 👆</p>
+        <!-- Projects Section -->
+        <section class="projects-section">
+            <div class="container">
+                <h2 class="section-title">Upcoming Projects</h2>
+                <div class="projects-grid">
+                    <div class="project-card coming-soon">
+                        <div class="project-icon">🚀</div>
+                        <h3 class="project-title">Project Alpha</h3>
+                        <p class="project-description">Revolutionary productivity tool for modern teams</p>
+                        <span class="project-status">Coming Soon</span>
+                    </div>
+
+                    <div class="project-card coming-soon">
+                        <div class="project-icon">💡</div>
+                        <h3 class="project-title">Project Nova</h3>
+                        <p class="project-description">AI-powered analytics platform for businesses</p>
+                        <span class="project-status">In Development</span>
+                    </div>
+
+                    <div class="project-card coming-soon">
+                        <div class="project-icon">🎯</div>
+                        <h3 class="project-title">Project Zenith</h3>
+                        <p class="project-description">Smart workflow automation made simple</p>
+                        <span class="project-status">Coming Soon</span>
+                    </div>
+
+                    <div class="project-card coming-soon">
+                        <div class="project-icon">🌟</div>
+                        <h3 class="project-title">Project Stellar</h3>
+                        <p class="project-description">Next-gen collaboration suite</p>
+                        <span class="project-status">Planning</span>
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="instructions">
-            <h3>How to Play</h3>
-            <ul>
-                <li>🐯 Tigers will pop out from bushes randomly</li>
-                <li>👆 Click or tap them before they hide!</li>
-                <li>⚡ Fast taps = Bonus points!</li>
-                <li>💎 Golden tigers give extra points!</li>
-                <li>❌ Miss 3 tigers = Game Over</li>
-                <li>⏰ Game lasts 30 seconds - maximize your score!</li>
-            </ul>
-        </div>
+        <!-- Interactive Game Section -->
+        <section class="game-section">
+            <div class="container">
+                <h2 class="section-title">Sky Pilot Challenge</h2>
+                <p class="section-subtitle">Navigate through obstacles and reach for the stars</p>
+                
+                <div class="game-container">
+                    <canvas id="gameCanvas"></canvas>
+                    
+                    <div class="game-overlay" id="startScreen">
+                        <h3>✈️ Sky Pilot</h3>
+                        <p>Control your airplane and dodge obstacles</p>
+                        <p>Collect stars for bonus points!</p>
+                        <div class="evolution-preview">
+                            <span>⬆️ Move Up</span>
+                            <span>•</span>
+                            <span>⬇️ Move Down</span>
+                        </div>
+                        <button class="btn-primary" id="startBtn">Take Off</button>
+                    </div>
 
-        <footer>
-            <p>Made with 🧡 for talltiger.net</p>
+                    <div class="game-overlay hidden" id="gameOverScreen">
+                        <h3 id="endTitle">Flight Ended</h3>
+                        <p class="score-display">Score: <span id="finalScore">0</span></p>
+                        <p class="score-display">Best: <span id="bestScore">0</span></p>
+                        <p id="gameOverMessage"></p>
+                        <button class="btn-primary" id="restartBtn">Fly Again</button>
+                    </div>
+
+                    <div class="game-controls">
+                        <div class="score-panel">
+                            <div class="score-item">
+                                <span class="score-label">Score</span>
+                                <span class="score-value" id="currentScore">0</span>
+                            </div>
+                            <div class="score-item">
+                                <span class="score-label">Best</span>
+                                <span class="score-value" id="bestScore2">0</span>
+                            </div>
+                            <div class="score-item">
+                                <span class="score-label">Distance</span>
+                                <span class="score-value-small" id="distanceFlown">0m</span>
+                            </div>
+                        </div>
+                        <div class="controls-hint" id="controlsHint">
+                            <p>⌨️ Arrow Keys, W/S, or Mouse to Fly</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-info">
+                    <h4>How to Play</h4>
+                    <ul>
+                        <li>Use ⬆️⬇️ arrow keys, W/S, or move your mouse to control the plane</li>
+                        <li>Dodge the obstacles coming from the right</li>
+                        <li>Collect ⭐ stars for bonus points</li>
+                        <li>The game speeds up as you progress - stay sharp!</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>&copy; 2025 Tall Tiger. Building the future, one project at a time. 🧡</p>
+                <p class="footer-links">
+                    <a href="mailto:contact@talltiger.net">Contact</a>
+                    <span>•</span>
+                    <a href="#projects">Projects</a>
+                </p>
+            </div>
         </footer>
     </div>
 
-    <script src="game.js?v=20"></script>
+    <script src="game.js?v=85"></script>
 </body>
 </html>
